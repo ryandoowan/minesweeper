@@ -49,9 +49,14 @@ def what_num(r, g, b, x, y, numArr):
         elif r >= 200 and g >= 100 and g <= 175 and b <= 60:
             numArr[4].append((x,y))
             return 5
-        #elif 5?
+        else:
+            # rare 6 sighting
+            r1,g1,b1 = pixels[11 + y * 31 + (y / 4), 19 + 31 * x + (x / 4)]
+            r2,g2,b2 = pixels[20 + y * 31 + (y / 4), 19 + 31 * x + (x / 4)]
+            if r2 < 50 and r1 < 50 and g1 > 125 and g2 > 125 and b1 > 125 and b2 > 125:
+                numArr[5].append((x,y))
+                return 6
     return 0
-    #elif 6?
 
 def check_if_can_mark_flags(x, y, num, tileArr):
     undisc_count = 0
@@ -213,7 +218,7 @@ hard_row = 20
 hard_col = 24
 tile = Tile()
 tileArr = np.full(shape=(hard_row, hard_col), fill_value=tile, dtype=Tile)
-numArr = [[], [], [], [], [], []]
+numArr = [[], [], [], [], [], [], []]
 # print(a)
 
 flags_used = 0
@@ -240,14 +245,14 @@ for x in range(hard_row):
             
 
         r,g,b = pixels[17 + y * 31 + (y / 4), 17 + 31 * x + (x / 4)]
-        if x == 13 and y == 4:
+        if x == 2 and y == 20:
             print("Num: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
-            # py.click(baseY + 20 + y * 31 + (y / 4), baseX + 20 + x * 31 + (x / 4), button='right')
+            # py.click(baseY + 11 + y * 31 + (y / 4), baseX + 19 + x * 31 + (x / 4), button='right')
         # for 4 and 5
         if x == 4 and y == 15:
             r,g,b = pixels[20 + y * 31 + (y / 4), 20 + 31 * x + (x / 4)]
             print("Num 4 or 5: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
-            # py.click(baseY + 20 + y * 31 + (y / 4), baseX + 20 + 31 * x + (x / 4), button='right')
+            # py.click(baseY + 20 + y * 31 + (y / 4), baseX0+ 20 + 31 * x + (x / 4), button='right')
         tempnum = what_num(r, g, b, x, y, numArr)
         if tile.num != "•":
             tile.num = tempnum
