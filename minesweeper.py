@@ -1,5 +1,4 @@
 import numpy as np
-import pyscreenshot
 from PIL import Image, ImageGrab
 # import pytesseract 
 import pyautogui as py
@@ -14,11 +13,10 @@ class Tile:
     self.flag = False
     self.num = 0
     self.finished = False
+    self.eff_num = 0  # effective number
 
 def check_if_discovered(r, g, b):
-    if r >= 140 and r <= 200 and g >= 175 and b <= 150:
-        return False
-    elif r >= 155 and r <= 165 and g >= 205 and g <= 215 and b >= 70 and b <= 80:
+    if r >= 140 and r <= 200 and g >= 170 and b <= 100 and g > r:
         return False
     return True
 
@@ -28,18 +26,24 @@ def check_if_flag(r, g, b):
     return False
 
 def what_num(r, g, b, x, y, numArr):
-    if r <= 70 and g <= 150 and b >= 150:
+    if r <= 100 and g <= 150 and b >= 150:
         numArr[0].append((x,y))
         return 1
-    elif r <= 75 and g >= 100 and b <= 75:
+    elif r <= 110 and g >= 100 and b <= 100:
         numArr[1].append((x,y))
         return 2
-    elif r >= 170 and g <= 100 and b <= 100:
+    elif r >= 170 and g <= 150 and b <= 150:
+        # it could be 4
+        if b > g and b >= 125 and g <= 125:
+            r,g,b = pixels[20 + y * 31 + (y / 4), 20 + 31 * x + (x / 4)]
+            if r >= 115 and r <= 175 and g <= 125 and b >= 115 and b <= 175:
+                numArr[3].append((x,y))
+                return 4
         numArr[2].append((x,y))
         return 3
     else:
-        r,g,b,a = pixels[23 + y * 31, 22 + 31 * x]
-        if r >= 115 and r <= 175 and g <= 100 and b >= 115 and b <= 175:
+        r,g,b = pixels[20 + y * 31 + (y / 4), 20 + 31 * x + (x / 4)]
+        if r >= 115 and r <= 175 and g <= 125 and b >= 115 and b <= 200:
             numArr[3].append((x,y))
             return 4
         elif r >= 200 and g >= 100 and g <= 175 and b <= 60:
@@ -53,8 +57,8 @@ def check_if_can_mark_flags(x, y, num, tileArr):
     undisc_count = 0
     undisc_arr = []
     for i in [-1, 0, 1]:
-        if not ((i == -1 and x == 0) or (i == 1 and x == 7)):
-            if y != 9 and not tileArr[x + i, y + 1].disc:
+        if not ((i == -1 and x == 0) or (i == 1 and x == 19)):
+            if y != 23 and not tileArr[x + i, y + 1].disc:
                 undisc_count += 1
                 undisc_arr.append((x + i, y + 1))
             if y != 0 and not tileArr[x + i, y - 1].disc:
@@ -70,53 +74,57 @@ def check_if_can_mark_flags(x, y, num, tileArr):
 def surrounding_undiscs(x, y, tileArr):
     undisc_arr = []
     for i in [-1, 0, 1]:
-        if not ((i == -1 and x == 0) or (i == 1 and x == 7)):
-            if y != 9 and not tileArr[x + i, y + 1].disc:
+        if not ((i == -1 and x == 0) or (i == 1 and x == 19)):
+            if y != 23 and not tileArr[x + i, y + 1].disc and not tileArr[x + i, y + 1].flag:
                 undisc_arr.append((x + i, y + 1))
-            if y != 0 and not tileArr[x + i, y - 1].disc:
+            if y != 0 and not tileArr[x + i, y - 1].disc and not tileArr[x + i, y - 1].flag:
                 undisc_arr.append((x + i, y - 1))
-            if i != 0 and not tileArr[x + i, y].disc:
+            if i != 0 and not tileArr[x + i, y].disc and not tileArr[x + i, y].flag:
                 undisc_arr.append((x + i, y))
     return undisc_arr
 
-def check_if_can_clear(x, y, num, tileArr):
+def check_flags_around(x, y, tileArr):
     flags_spotted = 0
     for i in [-1, 0, 1]:
-        if not ((i == -1 and x == 0) or (i == 1 and x == 7)):
-            if y != 9 and tileArr[x + i, y + 1].flag:
+        if not ((i == -1 and x == 0) or (i == 1 and x == 19)):
+            if y != 23 and tileArr[x + i, y + 1].flag:
                 flags_spotted += 1
             if y != 0 and tileArr[x + i, y - 1].flag:
                 flags_spotted += 1
             if i != 0 and tileArr[x + i, y].flag:
                 flags_spotted += 1
-    if flags_spotted > num:
-        print("BIG PROBLEM!!! At ", x, y)
-        printArray(tileArr)
-        exit()
-    if flags_spotted == num:
-        return True
-    return False
+    return flags_spotted
 
 def clear_around_you(x, y, tileArr, add_tiles_arr):
     for i in [-1, 0, 1]:
-        if not ((i == -1 and x == 0) or (i == 1 and x == 7)):
-            if y != 9 and not tileArr[x + i, y + 1].disc and not tileArr[x + i, y + 1].flag:
-                py.click(baseY + 28 + (y + 1) * 56, baseX + 28 + 56 * (x + i))
+        if not ((i == -1 and x == 0) or (i == 1 and x == 19)):
+            if y != 23 and not tileArr[x + i, y + 1].disc and not tileArr[x + i, y + 1].flag:
+                py.click(baseY + 15 + (y + 1) * 31 + (y / 4), baseX + 15 + 31 * (x + i) + (x / 4))
                 tileArr[x + i, y + 1].disc = True
                 add_tiles_arr.append((x + i, y + 1))
                 # clicks += 1
             if y != 0 and not tileArr[x + i, y - 1].disc and not tileArr[x + i, y - 1].flag:
-                py.click(baseY + 28 + (y - 1) * 56, baseX + 28 + 56 * (x + i))
+                py.click(baseY + 15 + (y - 1) * 31 + (y / 4), baseX + 15 + 31 * (x + i) + (x / 4))
                 tileArr[x + i, y - 1].disc = True
                 add_tiles_arr.append((x + i, y - 1))
                 # clicks += 1
             if i != 0 and not tileArr[x + i, y].disc and not tileArr[x + i, y].flag:
-                py.click(baseY + 28 + y * 56, baseX + 28 + 56 * (x + i))
+                py.click(baseY + 15 + y * 31 + (y / 4), baseX + 15 + 31 * (x + i) + (x / 4))
                 tileArr[x + i, y].disc = True
                 add_tiles_arr.append((x + i, y))
                 # clicks += 1
 
-def special_1_1_edge(listA, listB, add_tiles_arr):
+def update_eff_num(x, y, tileArr):
+    for i in [-1, 0, 1]:
+        if not ((i == -1 and x == 0) or (i == 1 and x == 19)):
+            if y != 23 and tileArr[x + i, y + 1].num != "•":
+                tileArr[x + i, y + 1].eff_num -= 1
+            if y != 0 and tileArr[x + i, y - 1].num != "•":
+                tileArr[x + i, y - 1].eff_num -= 1
+            if i != 0 and tileArr[x + i, y].num != "•"!= "•":
+                tileArr[x + i, y].eff_num -= 1
+
+def special_1_1or1_2_case(listA, listB, add_tiles_arr, case, flags_used):
     listDiff = []
     for element in listB:
         if element not in listA:
@@ -127,9 +135,30 @@ def special_1_1_edge(listA, listB, add_tiles_arr):
     # print(listDiff)
     if len(listDiff) == 1:
         listX, listY = listDiff[0]
-        py.click(baseY + 28 + listY * 56, baseX + 28 + 56 * listX)
-        tileArr[listX, listY].disc = True
-        add_tiles_arr.append((listX, listY))
+        if case == 1:
+            py.click(baseY + 15 + listY * 31 + (listY / 4), baseX + 15 + 31 * listX + (listX / 4))
+            tileArr[listX, listY].disc = True
+            add_tiles_arr.append((listX, listY))
+        elif case == 2:
+            # marked as flag
+            py.click(baseY + 15 + listY * 31 + (listY / 4), baseX + 15 + 31 * listX + (listX / 4), button="right")
+            tileArr[listX, listY].flag = True
+            tileArr[listX, listY].num = "•"
+            flags_used += 1
+
+            # need to update the eff_num around placed flag
+            update_eff_num(listX, listY, tileArr)
+        return True
+    return False
+
+def use_eff_num(x, y, listA, tileArr):
+    listB = surrounding_undiscs(x, y, tileArr)
+    if len(listB) == 3:
+        if tileArr[x, y].eff_num == 1:
+            return special_1_1or1_2_case(listA, listB, add_tiles_arr, 1, flags_used)
+        elif tileArr[x, y].eff_num == 2:
+            return special_1_1or1_2_case(listA, listB, add_tiles_arr, 2, flags_used)
+    return False
 
 def printArray(tileArr):
     print("nums:")
@@ -159,7 +188,7 @@ print("mouse coords", currentMouseX, currentMouseY)
 
 # For Easy mode: top left = 680, 326 | bottom right = 1243 851
 
-py.click(1215, 823)
+py.click(960, 624)
 
 time.sleep(1) # break it
 
@@ -167,15 +196,15 @@ time.sleep(1) # break it
 
 baseX = 311
 baseY = 585
-# im2 = ImageGrab.grab(bbox = (680, 398, 1241, 848), xdisplay=":0") 
+im2 = ImageGrab.grab(bbox = (585, 311, 1335, 937)) 
 
-# im2 = pyscreenshot.grab(bbox = (680, 398, 1241, 848))
-# im2.save('temptemp.jpg')
+im2.save('temptemp.jpg')
+print("screenshot done")
 
 # box sides = 56 pixels
 # half a box = 26 pixels
 
-im = Image.open("realhard.png")
+im = Image.open("temptemp.jpg")
 # im1 = im.crop((585, 311, 1335, 937))
 # im1.save("realhard.png")
 pixels = im.load()
@@ -193,15 +222,15 @@ for x in range(hard_row):
     for y in range(hard_col):
         tile = Tile()
 
-        red,gre,blu,a = pixels[3 + y * 31, 3 + 31 * x]
+        red,gre,blu = pixels[3 + y * 31 + (y / 4), 3 + 31 * x + (x / 4)]
         if x == 17 and y == 0:
             print("Position: [" + str(x) + "," + str(y) + "]", "(", red, gre, blu, ")")
-            py.click(baseY + 3 + y * 31, baseX + 3 + x * 31, button='right')
+            # py.click(baseY + 3 + y * 31 + (y / 4), baseX + 3 + x * 31 + (x / 4), button='right')
         if check_if_discovered(red, gre, blu):
             tile.disc = True
             tiles_disc += 1
 
-        r,g,b,a = pixels[8 + y * 31, 10 + 31 * x]
+        r,g,b = pixels[8 + y * 31 + (y / 4), 10 + 31 * x + (x / 4)]
         if x == 15 and y == 0:
             print("Flag: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
         if not tile.disc and check_if_flag(r, g, b):
@@ -210,9 +239,15 @@ for x in range(hard_row):
             flags_used += 1
             
 
-        r,g,b,a = pixels[15 + y * 31, 15 + 31 * x]
-        if x == 2 and y == 1:
+        r,g,b = pixels[17 + y * 31 + (y / 4), 17 + 31 * x + (x / 4)]
+        if x == 13 and y == 4:
             print("Num: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
+            # py.click(baseY + 20 + y * 31 + (y / 4), baseX + 20 + x * 31 + (x / 4), button='right')
+        # for 4 and 5
+        if x == 4 and y == 15:
+            r,g,b = pixels[20 + y * 31 + (y / 4), 20 + 31 * x + (x / 4)]
+            print("Num 4 or 5: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
+            # py.click(baseY + 20 + y * 31 + (y / 4), baseX + 20 + 31 * x + (x / 4), button='right')
         tempnum = what_num(r, g, b, x, y, numArr)
         if tile.num != "•":
             tile.num = tempnum
@@ -221,96 +256,118 @@ for x in range(hard_row):
 
 printArray(tileArr)
 
-# add_tiles_arr = []
-# count = 1
-# while flags_used < 10:
+count = 1
+while flags_used < 99:
+    add_tiles_arr = []
+    if count % 5 == 0:
+        im2 = ImageGrab.grab(bbox = (585, 311, 1335, 937)) 
+        im2.save('temptemp.jpg')
+        im = Image.open("temptemp.jpg")
+        pixels = im.load()
 
-#     if count % 25 == 0:
-#         time.sleep(0.1)
-#         im2 = ImageGrab.grab(bbox = (680, 398, 1241, 848)) 
-#         im2.save('temptemp.jpg')
-#         im = Image.open("temptemp.jpg")
-#         pixels = im.load()
+        for x in range(hard_row):
+            for y in range(hard_col):
+                red,gre,blu = pixels[3 + y * 31 + (y / 4), 3 + 31 * x + (x / 4)]
+                # print("Position: [" + str(x) + "," + str(y) + "]", "(", red, gre, blu, ")")
+                if check_if_discovered(red, gre, blu) and not tileArr[x, y].disc and tileArr[x, y].num != "•":
+                    tileArr[x, y].disc = True
 
-#         for x in range(hard_row):
-#             for y in range(hard_col):
-#                 red,gre,blu = pixels[5 + y * 56, 10 + 56 * x]
-#                 # print("Position: [" + str(x) + "," + str(y) + "]", "(", red, gre, blu, ")")
-#                 if check_if_discovered(red, gre, blu) and not tileArr[x, y].disc:
-#                     tileArr[x, y].disc = True
+                r,g,b = pixels[8 + y * 31 + (y / 4), 10 + 31 * x + (x / 4)]
+                # print("Flag: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
+                if not tileArr[x, y].disc and not tileArr[x, y].flag:
+                    if check_if_flag(r, g, b):
+                        tileArr[x, y].flag = True
+                        tileArr[x, y].num = "•"
+                        flags_used += 1
 
-#                 r,g,b = pixels[28 + y * 56, 24 + 56 * x]
-#                 # print("Flag: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
-#                 if not tileArr[x, y].disc and not tileArr[x, y].flag:
-#                     if check_if_flag(r, g, b):
-#                         tileArr[x, y].flag = True
-#                         tileArr[x, y].num = "•"
-#                         flags_used += 1
+                r,g,b = pixels[17 + y * 31 + (y / 4), 17 + 31 * x + (x / 4)]
+                # print("Position: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
+                tempnum = what_num(r, g, b, x, y, numArr)
+                if tileArr[x, y].num != "•":
+                    tileArr[x, y].num = tempnum
 
-#                 r,g,b = pixels[28 + y * 56, 43 + 56 * x]
-#                 # print("Position: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
-#                 tempnum = what_num(r, g, b, x, y, numArr)
-#                 if tileArr[x, y].num != "•":
-#                     tileArr[x, y].num = tempnum
+                num_flags = check_flags_around(x, y, tileArr)
+                if tileArr[x,y].num != "•":
+                    tileArr[x, y].eff_num = int(tileArr[x, y].num) - num_flags
         
-#         for x,y in numArr[0]:
-#             if x == 0 and tileArr[x, y].num == 1 and tileArr[x + 1, y].num == 1:
-#                 listA = surrounding_undiscs(x, y, tileArr)
-#                 listB = surrounding_undiscs(x + 1, y, tileArr)
-#                 special_1_1_edge(listA, listB)
-#             elif x == 7 and tileArr[x, y].num == 1 and tileArr[x - 1, y].num == 1:
-#                 listA = surrounding_undiscs(x, y, tileArr)
-#                 listB = surrounding_undiscs(x - 1, y, tileArr)
-#                 special_1_1_edge(listA, listB)
-#             if y == 0 and tileArr[x, y].num == 1 and tileArr[x, y + 1].num == 1:
-#                 listA = surrounding_undiscs(x, y, tileArr)
-#                 listB = surrounding_undiscs(x, y + 1, tileArr)
-#                 special_1_1_edge(listA, listB)
-#             elif y == 9 and tileArr[x, y].num == 1 and tileArr[x, y - 1].num == 1:
-#                 listA = surrounding_undiscs(x, y, tileArr)
-#                 listB = surrounding_undiscs(x, y - 1, tileArr)
-#                 special_1_1_edge(listA, listB)
+        for i, arr in enumerate(numArr):
+            for x,y in arr:
+                if tileArr[x, y].eff_num == 1:
+                    listA = surrounding_undiscs(x, y, tileArr)
+                    if len(listA) == 2:
+                        if x != 19 and use_eff_num(x + 1, y, listA, tileArr):
+                            continue
+                        elif x != 0 and use_eff_num(x - 1, y, listA, tileArr):
+                            continue
+                        elif y != 23 and use_eff_num(x, y + 1, listA, tileArr):
+                            continue
+                        elif y != 0 and use_eff_num(x, y - 1, listA, tileArr):
+                            continue
+
+        # for x,y in numArr[0]:
+        #     if x == 0 and tileArr[x, y].num == 1 and tileArr[x + 1, y].num == 1:
+        #         listA = surrounding_undiscs(x, y, tileArr)
+        #         listB = surrounding_undiscs(x + 1, y, tileArr)
+        #         special_1_1_edge(listA, listB, add_tiles_arr)
+        #     elif x == 19 and tileArr[x, y].num == 1 and tileArr[x - 1, y].num == 1:
+        #         listA = surrounding_undiscs(x, y, tileArr)
+        #         listB = surrounding_undiscs(x - 1, y, tileArr)
+        #         special_1_1_edge(listA, listB, add_tiles_arr)
+        #     if y == 0 and tileArr[x, y].num == 1 and tileArr[x, y + 1].num == 1:
+        #         listA = surrounding_undiscs(x, y, tileArr)
+        #         listB = surrounding_undiscs(x, y + 1, tileArr)
+        #         special_1_1_edge(listA, listB, add_tiles_arr)
+        #     elif y == 23 and tileArr[x, y].num == 1 and tileArr[x, y - 1].num == 1:
+        #         listA = surrounding_undiscs(x, y, tileArr)
+        #         listB = surrounding_undiscs(x, y - 1, tileArr)
+        #         special_1_1_edge(listA, listB, add_tiles_arr)
 
 
-#     # mark the flags
-#     for i, arr in enumerate(numArr):
-#         for x,y in arr:
-#             undisc_arr = check_if_can_mark_flags(x, y, i + 1, tileArr)
-#             # print(undisc_arr)
-#             if len(undisc_arr) == i + 1:
-#                 for xArr, yArr in undisc_arr:
-#                     if not tileArr[xArr, yArr].flag:
-#                         py.click(baseY + 28 + yArr * 56, baseX + 28 + 56 * xArr, button='right')
-#                         tileArr[xArr, yArr].flag = True
-#                         tileArr[xArr, yArr].num = "•"
-#                         flags_used += 1
-#                         # clicks += 1
+    # mark the flags
+    for i, arr in enumerate(numArr):
+        for x,y in arr:
+            undisc_arr = check_if_can_mark_flags(x, y, i + 1, tileArr)
+            # print(undisc_arr)
+            if len(undisc_arr) == i + 1:
+                for xArr, yArr in undisc_arr:
+                    if not tileArr[xArr, yArr].flag and tileArr[xArr, yArr].num != "•":
+                        py.click(baseY + 15 + yArr * 31 + (yArr / 4), baseX + 15 + 31 * xArr + (xArr / 4), button='right')
+                        tileArr[xArr, yArr].flag = True
+                        tileArr[xArr, yArr].num = "•"
+                        flags_used += 1
+                        # clicks += 1
 
-#     # use the flags
-#     for i, arr in enumerate(numArr):
-#         for x,y in arr:
-#             if check_if_can_clear(x, y, i + 1, tileArr):
-#                 # print(x, y, "can clear")
-#                 clear_around_you(x, y, tileArr, add_tiles_arr)
+    # use the flags
+    for i, arr in enumerate(numArr):
+        for x,y in arr:
+            num_flags = check_flags_around(x, y, tileArr)
+            if num_flags > (i + 1):
+                print("BIG PROBLEM!!! At ", x, y)
+                py.click(baseY + 15 + y * 31 + (y / 4), baseX + 15 + 31 * x + (x / 4), button='right')
+                printArray(tileArr)
+                exit()
+            elif num_flags == (i + 1):
+                # print(x, y, "can clear")
+                clear_around_you(x, y, tileArr, add_tiles_arr)
         
-#     # add any tiles just discovered to arrays
-#     for x,y in add_tiles_arr:
-#         r,g,b = pixels[28 + y * 56, 43 + 56 * x]
-#         # print("Position: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
-#         tempnum = what_num(r, g, b, x, y, numArr)
-#         if tile.num != "•":
-#             tile.num = tempnum
+    # add any tiles just discovered to arrays
+    for x,y in add_tiles_arr:
+        r,g,b = pixels[17 + y * 31 + (y / 4), 17 + 31 * x + (x / 4)]
+        # print("Position: [" + str(x) + "," + str(y) + "]", "(", r, g, b, ")")
+        tempnum = what_num(r, g, b, x, y, numArr)
+        if tile.num != "•":
+            tile.num = tempnum
     
-#     count += 1
+    count += 1
 
 
-# for x in range(hard_row):
-#     for y in range(hard_col):
-#         if not tileArr[x,y].disc and not tileArr[x,y].flag:
-#             py.click(baseY + 28 + y * 56, baseX + 28 + 56 * x)
+for x in range(hard_row):
+    for y in range(hard_col):
+        if not tileArr[x,y].disc and not tileArr[x,y].flag:
+            py.click(baseY + 15 + y * 31 + (y / 4), baseX + 15 + 31 * x + (x / 4))
 
-# print("Complete!!", flags_used, "flags used and in", count, "iterations.")
-# time.sleep(0.2)
-# im2 = ImageGrab.grab(bbox = (680, 398, 1241, 848)) 
-# im2.save('finished.jpg')
-# printArray(tileArr)
+print("Complete!!", flags_used, "flags used and in", count, "iterations.")
+time.sleep(0.2)
+im2 = ImageGrab.grab(bbox = (680, 398, 1241, 848)) 
+im2.save('finished.jpg')
+printArray(tileArr)
